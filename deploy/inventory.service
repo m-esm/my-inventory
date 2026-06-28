@@ -1,0 +1,22 @@
+[Unit]
+Description=My Inventory server
+After=network.target
+
+[Service]
+Type=simple
+User=inventory
+WorkingDirectory=/opt/my-inventory
+# Bind localhost only; Caddy terminates TLS and proxies to us.
+Environment=INVENTORY_HOST=127.0.0.1
+Environment=INVENTORY_PORT=8770
+ExecStart=/usr/bin/python3 /opt/my-inventory/server.py
+Restart=on-failure
+RestartSec=3
+# Hardening: the process may only write its own data/captures dirs.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/my-inventory/data /opt/my-inventory/captures
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

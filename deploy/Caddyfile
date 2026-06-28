@@ -1,0 +1,17 @@
+# Caddy reverse proxy with automatic HTTPS (Let's Encrypt).
+# Replace inventory.example.com with your real domain (DNS A record -> VPS IP).
+# Then: sudo cp Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+#
+# HTTPS matters here: auth is HTTP Basic, so credentials must travel encrypted.
+
+inventory.example.com {
+    encode gzip
+    reverse_proxy 127.0.0.1:8770
+}
+
+# No domain yet? Caddy can serve a local self-signed cert on the IP instead
+# (browsers will warn once). Uncomment and use https://<VPS-IP>:
+# https:// {
+#     tls internal
+#     reverse_proxy 127.0.0.1:8770
+# }

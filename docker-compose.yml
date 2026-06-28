@@ -1,0 +1,26 @@
+services:
+  inventory:
+    build: .
+    image: my-inventory:latest
+    container_name: my-inventory
+    restart: unless-stopped
+    # Join the default bridge network so the existing Traefik (v1) can route to us.
+    network_mode: bridge
+    env_file:
+      - deploy/admin.env          # ADMIN_USER / ADMIN_PASS (gitignored)
+    environment:
+      - INVENTORY_HOST=0.0.0.0
+      - INVENTORY_PORT=8770
+    ports:
+      - "127.0.0.1:8770:8770"     # VPS-local only; public traffic comes via Traefik
+    volumes:
+      - ./data:/app/data          # inventory.json, pending.json, users.json — PERSISTENT
+      - ./captures:/app/captures  # photos — PERSISTENT
+      - ./public:/app/public      # live UI — rsync edits take effect without a rebuild
+    labels:
+      # Traefik v1 routing. Replace inventory.example.com with your domain.
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:inventory.example.com"
+      - "traefik.frontend.entryPoints=http,https"
+      - "traefik.port=8770"
+      - "traefik.docker.network=bridge"

@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""MCP server exposing the inventory for read/query by an LLM agent.
+
+Pure standard library — runs on the system python3 (no uv, no pip). Read-only:
+it just calls the inventory's public HTTP API. Speaks the MCP stdio transport
+(newline-delimited JSON-RPC 2.0).
+
+Point it at a server with INVENTORY_URL (default: a local server):
+    INVENTORY_URL=https://inventory.example.com  python3 mcp_server.py
+"""
+import sys
+import os
+import io
+import json
+import base64
+import urllib.request
+from urllib.parse import urlencode
+
+BASE = os.environ.get("INVENTORY_URL", "http://localhost:8770").rstrip("/")
+
+# Pillow is optional: when present we downscale + re-encode images so the base64
+# payload stays small. Without it we fall back to sending the raw bytes.
+try:
+    from PIL import Image
+    _HAVE_PIL = True
+except Exception:
+    _HAVE_PIL = False
+
+
+# A real User-Agent is required — Cloudflare 403s the default "Python-urllib".
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+
+
+def _get(path):
+    req = urllib.request.Request(BASE + path, headers={
+        "Accept": "application/json",
+        "User-Agent": _UA,
+    })
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.load(r)
+
+
+def _post(path, body):
+    data = json.dumps(body).encode()
+    req = urllib.request.Request(BASE + path, data=data, method="POST", headers={
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": _UA,
+    })
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.load(r)
+
+
+def _get_bytes(path):
+    req = urllib.request.Request(BASE + path, headers={"User-Agent": _UA})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.read(), (r.headers.get("Content-Type") or "")
+
+
+_MIME = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+         ".gif": "image/gif", ".webp": "image/webp"}
+
+
+def _image_block(filename, max_dim=1024):
+    """Fetch /captures/<filename> and return an MCP image content block.
+
+    With Pillow we downscale to max_dim on the long edge and re-encode as JPEG
+    (q80) to keep the base64 small; otherwise we pass the raw bytes through.
+    """
+    raw, ctype = _get_bytes("/captures/" + filename)
+    mime = ctype.split(";")[0].strip() or _MIME.get(
+        os.path.splitext(filename)[1].lower(), "application/octet-stream")
+    if _HAVE_PIL:
+        try:
+            im = Image.open(io.BytesIO(raw))
+            im.thumbnail((max_dim, max_dim), Image.LANCZOS)
+            if im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            buf = io.BytesIO()
+            im.save(buf, format="JPEG", quality=80, optimize=True)
+            raw, mime = buf.getvalue(), "image/jpeg"
+        except Exception:
+            pass  # fall back to the raw bytes we already have
+    return {"type": "image", "data": base64.b64encode(raw).decode(), "mimeType": mime}
+
+
+TOOLS = [
+    {
+        "name": "inventory_summary",
+        "description": "Overview of Moshe's electronics inventory: total items, total units, and a breakdown by category and storage location (bag/bin).",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "search_inventory",
+        "description": "Search/filter the inventory. 'query' is free text matched across name, category, location and notes; 'category'/'location' restrict to an exact match; 'limit' caps results.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "free-text search"},
+                "category": {"type": "string", "description": "exact category, e.g. Sensors"},
+                "location": {"type": "string", "description": "exact bag/bin, e.g. Bag 6"},
+                "limit": {"type": "integer", "description": "max results (default 50)"},
+            },
+        },
+    },
+    {
+        "name": "list_all_items",
+        "description": "Return the full inventory (every item with all fields).",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "list_wishlist",
+        "description": "List purchase requests — parts that have been asked to be bought and added to the inventory (the 'to buy' list). Each entry has project, part, type, reason, quantity and status (requested/ordered/bought). Check this before requesting to avoid duplicate asks.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_item_images",
+        "description": "Return the actual photos of inventory items so you can SEE the parts (not just their names). Identify items by 'id' (exact) or by 'query' (free-text matched across name/category/location/notes); 'category'/'location' narrow a query. Returns every image of each matched item, part-first. Use after search_inventory/list_all_items when you need to visually inspect a component.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "description": "exact item id, e.g. cap-1717000000000"},
+                "query": {"type": "string", "description": "free-text search to pick item(s)"},
+                "category": {"type": "string", "description": "exact category to narrow a query"},
+                "location": {"type": "string", "description": "exact bag/bin to narrow a query"},
+                "max_items": {"type": "integer", "description": "max matched items (default 5)"},
+                "max_images": {"type": "integer", "description": "max images returned total (default 20)"},
+                "max_dimension": {"type": "integer", "description": "long-edge pixel cap per image (default 1024)"},
+            },
+        },
+    },
+    {
+        "name": "request_purchase",
+        "description": "Request that a part be bought and added to Moshe's inventory. Use when a project needs a component that isn't in stock. Be specific: the exact part, what kind of product it is, which project it's for, and why it's needed.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "part": {"type": "string", "description": "The exact part to buy, e.g. '10kΩ 1/4W resistor' or 'ESP32-WROOM-32 dev board'"},
+                "project": {"type": "string", "description": "The project this is for, e.g. 'soil-moisture logger'"},
+                "type": {"type": "string", "description": "Type/category of product, e.g. 'Resistor', 'Microcontroller', 'Sensor'"},
+                "reason": {"type": "string", "description": "Why it's needed — what it's used for in the project"},
+                "quantity": {"type": "integer", "description": "How many to buy (default 1)"},
+                "requested_by": {"type": "string", "description": "Who/what is asking, e.g. the agent or task name (optional)"},
+            },
+            "required": ["part"],
+        },
+    },
+]
+
+
+def _item_images(args):
+    """Resolve item(s) and return interleaved text + image content blocks."""
+    iid = (args.get("id") or "").strip()
+    query = (args.get("query") or "").strip()
+    max_items = int(args.get("max_items") or 5)
+    max_images = int(args.get("max_images") or 20)
+    max_dim = int(args.get("max_dimension") or 1024)
+
+    if iid:
+        items = [it for it in _get("/api/inventory").get("items", [])
+                 if it.get("id") == iid]
+        if not items:
+            raise ValueError("no item with id %r" % iid)
+    elif query or args.get("category") or args.get("location"):
+        qs = urlencode({
+            "search": query,
+            "category": args.get("category", "") or "",
+            "location": args.get("location", "") or "",
+            "limit": max_items,
+        })
+        items = _get("/api/query?" + qs).get("items", [])
+        if not items:
+            raise ValueError("no items matched the query")
+    else:
+        raise ValueError("provide an 'id' or a 'query'/category/location to pick items")
+
+    items = items[:max_items]
+    content, sent, skipped = [], 0, 0
+    for it in items:
+        imgs = it.get("images") or []
+        label = "%s — %s (id %s, %s, qty %s) — %d image(s)" % (
+            it.get("name") or "⏳ unidentified", it.get("category") or "?",
+            it.get("id"), it.get("location") or "?", it.get("quantity", "?"), len(imgs))
+        content.append({"type": "text", "text": label})
+        for fn in imgs:
+            if sent >= max_images:
+                skipped += 1
+                continue
+            try:
+                content.append(_image_block(fn, max_dim))
+                sent += 1
+            except Exception as e:
+                content.append({"type": "text", "text": "  (failed to load %s: %s)" % (fn, e)})
+    if skipped:
+        content.append({"type": "text",
+                        "text": "… %d more image(s) omitted (max_images=%d). Raise max_images to see them."
+                        % (skipped, max_images)})
+    if sent == 0:
+        content.append({"type": "text", "text": "(these items have no photos)"})
+    return content
+
+
+def call_tool(name, args):
+    if name == "inventory_summary":
+        return _get("/api/summary")
+    if name == "search_inventory":
+        qs = urlencode({
+            "search": args.get("query", "") or "",
+            "category": args.get("category", "") or "",
+            "location": args.get("location", "") or "",
+            "limit": args.get("limit", 50) or 50,
+        })
+        return _get("/api/query?" + qs)
+    if name == "list_all_items":
+        return _get("/api/inventory")
+    if name == "get_item_images":
+        return _item_images(args)
+    if name == "list_wishlist":
+        return _get("/api/wishlist")
+    if name == "request_purchase":
+        part = (args.get("part") or "").strip()
+        if not part:
+            raise ValueError("part is required (what to buy)")
+        return _post("/api/wishlist", {
+            "part": part,
+            "project": args.get("project", "") or "",
+            "type": args.get("type", "") or "",
+            "reason": args.get("reason", "") or "",
+            "quantity": args.get("quantity", 1) or 1,
+            "requested_by": args.get("requested_by", "") or "",
+        })
+    raise ValueError("unknown tool: %s" % name)
+
+
+def send(obj):
+    sys.stdout.write(json.dumps(obj) + "\n")
+    sys.stdout.flush()
+
+
+def main():
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        mid = msg.get("id")
+        method = msg.get("method")
+        if method == "initialize":
+            send({"jsonrpc": "2.0", "id": mid, "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "moshes-inventory", "version": "1.0.0"},
+            }})
+        elif method == "notifications/initialized":
+            pass  # notification, no reply
+        elif method == "tools/list":
+            send({"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}})
+        elif method == "tools/call":
+            params = msg.get("params", {}) or {}
+            try:
+                data = call_tool(params.get("name"), params.get("arguments") or {})
+                # A tool may return ready-made MCP content blocks (e.g. images);
+                # anything else is JSON we wrap as a single text block.
+                content = data if isinstance(data, list) else \
+                    [{"type": "text", "text": json.dumps(data, indent=2)}]
+                send({"jsonrpc": "2.0", "id": mid, "result": {"content": content}})
+            except Exception as e:  # report tool errors back to the model
+                send({"jsonrpc": "2.0", "id": mid, "result": {
+                    "content": [{"type": "text", "text": "error: %s" % e}], "isError": True}})
+        elif method == "ping":
+            send({"jsonrpc": "2.0", "id": mid, "result": {}})
+        elif mid is not None:
+            send({"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": "method not found"}})
+
+
+if __name__ == "__main__":
+    main()

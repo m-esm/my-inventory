@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Claude Code local session state / handoffs (not project data)
+.remember/
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+
+# transient duplicate-decision queue
+data/pending.json
+
+# local-only purchase-request state
+data/wishlist.json
+
+# secrets & safety backups - NEVER commit
+data/users.json
+data/*.bak
+data/*.tmp
+
+# admin credentials - NEVER commit
+deploy/admin.env
+
+# Example item photos (captures/*.png) ARE tracked so the demo renders out of
+# the box. Transient capture sidecars / review markers are not.
+captures/*.json
+captures/.DS_Store

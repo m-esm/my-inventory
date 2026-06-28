@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Moshe's Inventory — Capture</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='88'>📸</text></svg>" />
+<meta name="theme-color" content="#0b0f14" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { touch-action: manipulation; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; font: 15px/1.4 -apple-system, system-ui, sans-serif;
+    background: #0b0f14; color: #e6edf3; padding: 20px;
+    padding: max(20px, env(safe-area-inset-top)) 20px 20px;
+  }
+
+  /* identification queue */
+  .queue-strip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 16px;
+                 padding: 10px 13px; border: 1px solid #2a3a4a; background: #0f1722; border-radius: 12px; }
+  .queue-strip:empty { display: none; }
+  .queue-strip .qhead { font-size: 13px; color: #e3b341; display: flex; align-items: center; gap: 7px; font-weight: 600; }
+  .queue-strip .spin { width: 12px; height: 12px; border: 2px solid #e3b34144; border-top-color: #e3b341; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .queue-strip .qitem { display: flex; align-items: center; gap: 5px; }
+  .queue-strip .qitem img { width: 38px; height: 38px; object-fit: cover; border-radius: 6px; border: 1px solid #2a3340; }
+  .queue-strip .qstat { font-size: 11px; color: #768390; }
+
+  /* mobile: bigger touch targets, full-width controls */
+  @media (max-width: 620px) {
+    body { padding: 12px; padding-top: max(12px, env(safe-area-inset-top)); }
+    h1 { font-size: 16px; }
+    .controls { gap: 8px; }
+    .controls select { flex: 1 1 100%; }
+    .controls button { flex: 1; padding: 13px 12px; font-size: 16px; }
+    button.primary, .additem, #additem { min-height: 48px; }
+    .qtyrow input, select, input { font-size: 16px; }  /* avoid iOS zoom-on-focus */
+    .shot img { width: 76px; height: 76px; }
+    #additem, #discard { flex: 1; min-height: 48px; }
+  }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  h1 { font-size: 18px; margin: 0; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #768390; margin: 0 0 10px; }
+  a { color: #58a6ff; }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  @media (max-width: 880px) { .wrap { grid-template-columns: 1fr; } }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  select, button, input {
+    font: inherit; border-radius: 9px; border: 1px solid #2a3340;
+    background: #161b22; color: #e6edf3; padding: 9px 12px;
+  }
+  button.primary { background: #238636; border-color: #2ea043; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .45; cursor: default; }
+  button.ghost { cursor: pointer; }
+  .stage { position: relative; }
+  video { width: 100%; border-radius: 14px; background: #000; display: block; }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; border-radius: 14px; pointer-events: none; }
+  .flash.go { animation: f .25s ease; }
+  @keyframes f { from { opacity: .8; } to { opacity: 0; } }
+  .meta { margin: 8px 0; color: #9aa7b4; }
+  .meta b { color: #e6edf3; }
+  .hint { color: #768390; font-size: 13px; }
+  .cam-controls { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; margin: 4px 0 2px; }
+  .cam-controls:empty { display: none; }
+  .cam-controls .ctl { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #9aa7b4; }
+  .cam-controls input[type=range] { width: 150px; accent-color: #2ea043; }
+  .cam-controls .toggle { cursor: pointer; border: 1px solid #2a3340; background: #161b22; border-radius: 8px; padding: 6px 11px; color: #e6edf3; }
+  .cam-controls .toggle.on { background: #238636; border-color: #2ea043; }
+  .cam-controls .nocaps { color: #56616d; font-size: 12px; }
+  kbd { background:#161b22; border:1px solid #2a3340; border-radius:5px; padding:1px 6px; }
+
+  /* current-item staging */
+  .curitem { margin-top: 22px; background: #11161d; border: 1px solid #2a3340; border-radius: 14px; padding: 14px; }
+  .curitem.empty { border-style: dashed; opacity: .8; }
+  .strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; min-height: 8px; }
+  .shot { position: relative; }
+  .shot img { width: 92px; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid #2a3340; display: block; }
+  .shot .x { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
+             background: #da3633; color: #fff; border: none; font-size: 12px; line-height: 1; cursor: pointer; }
+  .shot .num { position: absolute; bottom: 4px; left: 4px; background: #0a0e13cc; border-radius: 5px; padding: 0 5px; font-size: 11px; }
+  .nostrip { color: #56616d; font-size: 13px; padding: 14px 0; }
+  .fields { display: flex; flex-direction: column; gap: 9px; }
+  .qtyrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .qtyrow label { font-size: 11px; color: #768390; min-width: 42px; }
+  .qtyrow input[type=number] { width: 78px; text-align: center; }
+  .note { width: 100%; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  .status-line { color: #768390; font-size: 12px; }
+
+  /* live inventory */
+  .inv { display: flex; flex-direction: column; gap: 8px; max-height: 72vh; overflow: auto; }
+  .item { display: flex; gap: 10px; align-items: center; background: #11161d; border: 1px solid #1c2430; border-radius: 10px; padding: 8px 10px; }
+  .item .thumb { position: relative; width: 44px; height: 44px; flex: none; }
+  .item img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; background:#05080c; }
+  .item .badge { position: absolute; right: -4px; bottom: -4px; background: #1f6feb; color:#fff; border-radius: 6px; font-size: 10px; padding: 0 4px; }
+  .item .n { font-weight: 600; font-size: 14px; }
+  .item .c { font-size: 12px; color: #79c0ff; }
+  .item .q { margin-left: auto; background: #238636; color: #fff; font-weight: 700; border-radius: 7px; padding: 2px 9px; font-size: 13px; }
+  .totals { display: flex; gap: 18px; margin-bottom: 10px; }
+  .totals b { font-size: 19px; display: block; }
+  .totals span { color: #768390; font-size: 11px; text-transform: uppercase; }
+  .invempty { color: #768390; font-size: 13px; padding: 20px 0; }
+
+  /* pending duplicate decisions */
+  .pending-decisions { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .pending-decisions:empty { display: none; }
+  .dup-card { border: 1px solid #bb800988; background: #bb800914; border-radius: 14px; padding: 14px 16px; }
+  .dup-head { font-size: 15px; margin-bottom: 9px; }
+  .dup-head b { color: #e3b341; }
+  .dup-cmp { display: flex; gap: 20px; flex-wrap: wrap; color: #9aa7b4; font-size: 14px; margin-bottom: 10px; }
+  .dup-cmp b { color: #e6edf3; }
+  .dup-thumbs { display: flex; gap: 6px; margin-bottom: 11px; }
+  .dup-thumbs img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid #2a3340; }
+  .dup-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dup-btns button { border-radius: 9px; border: 1px solid #2a3340; background: #161b22; color: #e6edf3; padding: 8px 13px; font: inherit; cursor: pointer; }
+  .dup-btns button.go { background: #238636; border-color: #2ea043; font-weight: 600; }
+  .dup-btns button.skip { margin-left: auto; color: #768390; border-color: transparent; background: transparent; }
+  .dup-btns button.skip:hover { color: #e6edf3; border-color: #2a3340; }
+  .dup-btns button:disabled { opacity: .5; cursor: default; }
+  .dup-edit { display: flex; flex-direction: column; gap: 8px; margin-bottom: 11px; }
+  .dup-edit .d-name { width: 100%; border-radius: 8px; border: 1px solid #2a3340; background: #161b22; color: #e6edf3; padding: 9px 11px; font-weight: 600; }
+  .dup-edit .d-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .dup-edit .d-row label { font-size: 12px; color: #768390; }
+  .dup-edit .d-row input { border-radius: 8px; border: 1px solid #2a3340; background: #161b22; color: #e6edf3; padding: 7px 10px; }
+  .dup-edit .d-qty { width: 72px; text-align: center; }
+  .dup-edit .d-loc { width: 130px; }
+  .dup-matches { margin-bottom: 11px; }
+  .m-title { font-size: 12px; color: #768390; margin-bottom: 4px; }
+  .m-row { display: flex; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid #ffffff12; flex-wrap: wrap; }
+  .m-info { flex: 1; font-size: 13px; color: #cdd6df; min-width: 170px; }
+  .m-row button { border-radius: 8px; border: 1px solid #2a3340; background: #161b22; color: #e6edf3; padding: 6px 11px; font: inherit; cursor: pointer; }
+  .m-row button:hover { border-color: #3a4654; }
+  .m-row button.go { background: #238636; border-color: #2ea043; font-weight: 600; }
+  .m-row button:disabled { opacity: .5; cursor: default; }
+  .dup-status { margin-top: 10px; font-size: 13px; min-height: 18px; }
+  .dup-status.ok { color: #3fb950; font-weight: 600; }
+  .dup-status.err { color: #ff7b72; }
+
+  /* zoom & crop modal */
+  .crop-overlay { position: fixed; inset: 0; background: #000000cc; backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center; z-index: 90; padding: 20px; }
+  .crop-overlay.show { display: flex; }
+  .crop-box { background: #11161d; border: 1px solid #2a3340; border-radius: 14px; padding: 16px; max-width: 92vw; }
+  .crop-title { font-size: 14px; color: #9aa7b4; margin-bottom: 10px; }
+  #crop-canvas { width: min(440px, 82vw); height: auto; aspect-ratio: 4/3; background: #000; border-radius: 10px; cursor: grab; touch-action: none; display: block; }
+  #crop-canvas:active { cursor: grabbing; }
+  .crop-controls { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: #9aa7b4; font-size: 13px; }
+  .crop-controls input[type=range] { flex: 1; accent-color: #2ea043; }
+  .crop-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .crop-actions button { border-radius: 9px; border: 1px solid #2a3340; background: #161b22; color: #e6edf3; padding: 9px 13px; font: inherit; cursor: pointer; }
+  .crop-actions button.primary { background: #238636; border-color: #2ea043; font-weight: 600; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>📸 Moshe's Inventory — Capture</h1>
+    <a href="/dashboard">← Back to dashboard</a>
+  </header>
+
+  <div id="queue-strip" class="queue-strip"></div>
+  <div id="pending-decisions" class="pending-decisions"></div>
+
+  <div class="wrap">
+    <!-- LEFT: camera + current item -->
+    <div>
+      <div class="controls">
+        <select id="cam" title="Choose camera"></select>
+        <button class="primary" id="snap">📸 Capture photo</button>
+        <button class="ghost" id="upload-btn">📁 Upload</button>
+        <input type="file" id="file-input" accept="image/*" hidden>
+      </div>
+      <div class="stage">
+        <video id="v" autoplay playsinline muted></video>
+        <div class="flash" id="flash"></div>
+      </div>
+      <p class="meta" id="status">Starting camera…</p>
+      <div id="cam-controls" class="cam-controls"></div>
+      <p class="hint">
+        Take <b>as many photos as you like for one item</b> (label front/back, the
+        part itself) — press <kbd>Capture</kbd> or <kbd>Space</kbd> for each. Then set
+        quantity/location and click <b>Add to inventory</b> to log them as one entry.
+      </p>
+
+      <div class="curitem empty" id="curitem">
+        <h2>Current item — <span id="shotcount">0</span> photo(s)</h2>
+        <div class="strip" id="strip"><div class="nostrip" id="nostrip">No photos yet — press Capture.</div></div>
+        <div class="fields">
+          <div class="qtyrow">
+            <label>Qty</label>
+            <button class="ghost" data-d="-1">−</button>
+            <input type="number" min="1" class="qty" id="qty" placeholder="auto">
+            <button class="ghost" data-d="1">+</button>
+            <span class="status-line">blank = read pack count off the label</span>
+          </div>
+          <div class="qtyrow">
+            <label>Where</label>
+            <select id="ctype"><option value="Bag">Bag</option><option value="Bin">Bin</option><option value="Tray">Tray</option></select>
+            <input type="number" min="1" id="cnum" placeholder="#" style="width:78px">
+          </div>
+          <input class="note" id="note" placeholder="Note / part name (optional)">
+          <div class="actions">
+            <button class="primary" id="additem" disabled>✓ Add to inventory</button>
+            <button class="ghost" id="discard">Discard</button>
+            <span class="status-line" id="itemstatus"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: live inventory -->
+    <div>
+      <h2 style="margin-top:0">Live inventory</h2>
+      <div class="totals">
+        <div><b id="t-items">0</b><span>items</span></div>
+        <div><b id="t-units">0</b><span>units</span></div>
+        <div><b id="t-cats">0</b><span>categories</span></div>
+      </div>
+      <div class="inv" id="inv"></div>
+      <div class="invempty" id="invempty">Nothing logged yet.</div>
+    </div>
+  </div>
+
+<div class="crop-overlay" id="crop-overlay">
+  <div class="crop-box">
+    <div class="crop-title">Zoom &amp; crop — drag to position, slider/scroll to zoom</div>
+    <canvas id="crop-canvas" width="800" height="600"></canvas>
+    <div class="crop-controls">
+      <span>🔍 Zoom</span>
+      <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1">
+    </div>
+    <div class="crop-actions">
+      <button id="crop-cancel">Cancel</button>
+      <button id="crop-full">Use full image</button>
+      <button class="primary" id="crop-confirm">Crop &amp; use</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ---- shared zoom & crop modal (used by camera capture and file upload) ----
+const CROP_W = 800, CROP_H = 600;
+let cimg = null, cscale = 1, cmin = 1, cox = 0, coy = 0, cConfirm = null, cSrc = null;
+function cclamp() {
+  const w = cimg.width * cscale, h = cimg.height * cscale;
+  cox = Math.min(0, Math.max(CROP_W - w, cox));
+  coy = Math.min(0, Math.max(CROP_H - h, coy));
+}
+function cdraw() {
+  const cv = $('crop-canvas'), x = cv.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, CROP_W, CROP_H);
+  cclamp();
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(cimg, cox, coy, cimg.width * cscale, cimg.height * cscale);
+}
+function openCropper(src, onConfirm) {
+  cSrc = src; cConfirm = onConfirm;
+  cimg = new Image();
+  cimg.onload = () => {
+    cmin = Math.max(CROP_W / cimg.width, CROP_H / cimg.height); // cover
+    cscale = cmin;
+    cox = (CROP_W - cimg.width * cscale) / 2;
+    coy = (CROP_H - cimg.height * cscale) / 2;
+    $('crop-zoom').value = 1;
+    cdraw();
+    $('crop-overlay').classList.add('show');
+  };
+  cimg.src = src;
+}
+function czoomTo(mult, ax, ay) {
+  const ns = cmin * mult, old = cscale;
+  cox = ax - (ax - cox) * (ns / old);
+  coy = ay - (ay - coy) * (ns / old);
+  cscale = ns; cdraw();
+}
+$('crop-zoom').addEventListener('input', () => czoomTo(+$('crop-zoom').value, CROP_W / 2, CROP_H / 2));
+(function () {
+  const cv = $('crop-canvas');
+  let drag = false, lx = 0, ly = 0;
+  const f = () => CROP_W / cv.clientWidth;
+  const down = e => { drag = true; const p = e.touches ? e.touches[0] : e; lx = p.clientX; ly = p.clientY; };
+  const move = e => { if (!drag) return; const p = e.touches ? e.touches[0] : e; cox += (p.clientX - lx) * f(); coy += (p.clientY - ly) * f(); lx = p.clientX; ly = p.clientY; cdraw(); e.preventDefault(); };
+  const up = () => { drag = false; };
+  cv.addEventListener('mousedown', down); window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+  cv.addEventListener('touchstart', down, { passive: false }); cv.addEventListener('touchmove', move, { passive: false }); cv.addEventListener('touchend', up);
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const mult = Math.min(4, Math.max(1, (cscale / cmin) * (e.deltaY < 0 ? 1.1 : 0.9)));
+    $('crop-zoom').value = mult; czoomTo(mult, CROP_W / 2, CROP_H / 2);
+  }, { passive: false });
+})();
+$('crop-cancel').addEventListener('click', () => $('crop-overlay').classList.remove('show'));
+$('crop-full').addEventListener('click', () => { $('crop-overlay').classList.remove('show'); if (cConfirm) cConfirm(cSrc); });
+$('crop-confirm').addEventListener('click', () => {
+  const url = $('crop-canvas').toDataURL('image/png');
+  $('crop-overlay').classList.remove('show');
+  if (cConfirm) cConfirm(url);
+});
+const v = $('v'), camSel = $('cam'), statusEl = $('status');
+// Use the admin session from the dashboard login (same origin) so writes work on
+// the deployed (remote) site, where capture/confirm/resolve require admin.
+const authHeader = localStorage.getItem('authHeader') || sessionStorage.getItem('authHeader') || '';
+const jsonHeaders = () => authHeader
+  ? { 'Content-Type': 'application/json', 'Authorization': authHeader }
+  : { 'Content-Type': 'application/json' };
+let stream = null;
+let currentFiles = [];   // photos accumulated for the item being built
+// Single shared "last used location" (string like "Bag 3"), also used by the dashboard.
+function parseLoc(s){ const m = /^(Bag|Bin|Tray)\s+(.+)$/i.exec(s || ''); return m ? { type: m[1][0].toUpperCase()+m[1].slice(1).toLowerCase(), num: m[2] } : { type: 'Bag', num: '' }; }
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// Populate the dropdown and make its selection reflect the device ACTUALLY
+// streaming (activeId) — never force a particular camera here.
+async function populateCams(activeId) {
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  camSel.innerHTML = '';
+  cams.forEach((c, i) => {
+    const o = document.createElement('option');
+    o.value = c.deviceId; o.textContent = c.label || ('Camera ' + (i + 1));
+    camSel.appendChild(o);
+  });
+  if (activeId) camSel.value = activeId;
+  return cams;
+}
+async function start(deviceId) {
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }, audio: false });
+  v.srcObject = stream;
+  const activeId = stream.getVideoTracks()[0].getSettings().deviceId;
+  const cams = await populateCams(activeId);
+  // Prefer the iPhone, but ONLY on the initial auto-start (no explicit choice).
+  // Labels/ids are only known after permission, so the first stream is the
+  // default (laptop) camera; switch to the iPhone if we just found it.
+  if (!deviceId) {
+    const ip = cams.find(c => /iphone|continuity/i.test(c.label));
+    if (ip && ip.deviceId && ip.deviceId !== activeId) return start(ip.deviceId);
+  }
+  buildCamControls(stream.getVideoTracks()[0]);
+  statusEl.textContent = 'Ready. Capture one or more photos of a part.';
+}
+
+// Expose manual focus / zoom / torch when the camera advertises them.
+function buildCamControls(track) {
+  const box = document.getElementById('cam-controls');
+  box.innerHTML = '';
+  const caps = track.getCapabilities ? track.getCapabilities() : {};
+  const cur = track.getSettings ? track.getSettings() : {};
+  const apply = obj => track.applyConstraints({ advanced: [obj] })
+    .catch(e => { statusEl.textContent = 'Camera control failed: ' + e.message; });
+
+  // Manual / near focus
+  if (caps.focusMode && caps.focusMode.includes('manual') && caps.focusDistance) {
+    const fd = caps.focusDistance; // min = nearest
+    const near = document.createElement('button');
+    near.className = 'toggle'; near.textContent = '🔍 Near focus';
+    const range = document.createElement('input');
+    range.type = 'range'; range.min = fd.min; range.max = fd.max; range.step = fd.step || (fd.max - fd.min) / 100;
+    range.value = cur.focusDistance ?? fd.min; range.style.display = 'none';
+    near.addEventListener('click', () => {
+      const on = near.classList.toggle('on');
+      if (on) { apply({ focusMode: 'manual', focusDistance: fd.min }); range.value = fd.min; range.style.display = ''; }
+      else { apply({ focusMode: 'continuous' }); range.style.display = 'none'; }
+    });
+    range.addEventListener('input', () => apply({ focusMode: 'manual', focusDistance: +range.value }));
+    const wrap = document.createElement('div'); wrap.className = 'ctl';
+    wrap.append(near, range); box.appendChild(wrap);
+  } else if (caps.focusMode && caps.focusMode.includes('manual')) {
+    // manual focus but no distance range exposed
+    const b = document.createElement('button'); b.className = 'toggle'; b.textContent = '🔍 Lock focus (near)';
+    b.addEventListener('click', () => { const on = b.classList.toggle('on'); apply({ focusMode: on ? 'manual' : 'continuous' }); });
+    const w = document.createElement('div'); w.className = 'ctl'; w.appendChild(b); box.appendChild(w);
+  }
+
+  // Zoom
+  if (caps.zoom && caps.zoom.max > caps.zoom.min) {
+    const z = caps.zoom;
+    const range = document.createElement('input');
+    range.type = 'range'; range.min = z.min; range.max = z.max; range.step = z.step || (z.max - z.min) / 100;
+    range.value = cur.zoom ?? z.min;
+    range.addEventListener('input', () => apply({ zoom: +range.value }));
+    const wrap = document.createElement('div'); wrap.className = 'ctl';
+    const lbl = document.createElement('span'); lbl.textContent = '🔭 Zoom';
+    wrap.append(lbl, range); box.appendChild(wrap);
+  }
+
+  // Torch (light)
+  if (caps.torch) {
+    const b = document.createElement('button'); b.className = 'toggle'; b.textContent = '💡 Light';
+    b.addEventListener('click', () => { const on = b.classList.toggle('on'); apply({ torch: on }); });
+    const w = document.createElement('div'); w.className = 'ctl'; w.appendChild(b); box.appendChild(w);
+  }
+
+  if (!box.children.length) {
+    box.innerHTML = '<span class="nocaps">This camera exposes no manual focus/zoom controls. Tip: zoom isn\'t available, so back the part off to the lens\'s minimum focus distance and fill the frame.</span>';
+  }
+}
+camSel.addEventListener('change', () => start(camSel.value));
+
+// init the Where fields from the last used location
+const initLoc = parseLoc(localStorage.getItem('lastLocation'));
+$('ctype').value = initLoc.type;
+$('cnum').value = initLoc.num;
+
+async function snap() {
+  if (!stream) return;
+  const s = stream.getVideoTracks()[0].getSettings();
+  const w = s.width || v.videoWidth || 1280, h = s.height || v.videoHeight || 720;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(v, 0, 0, w, h);
+  const dataUrl = canvas.toDataURL('image/png');
+  const flash = $('flash');
+  flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
+  openCropper(dataUrl, saveImage);   // zoom/crop, then save
+}
+
+// Save a (possibly cropped) image to the current item.
+async function saveImage(dataUrl) {
+  statusEl.textContent = 'Saving photo…';
+  try {
+    const r = await fetch('/api/capture', {
+      method: 'POST', headers: jsonHeaders(),
+      body: JSON.stringify({ image: dataUrl })
+    });
+    const j = await r.json();
+    if (j.ok) { currentFiles.push(j.file); renderStrip(); statusEl.textContent = 'Photo added to current item.'; }
+    else statusEl.textContent = 'Save failed: ' + (j.error || 'unknown');
+  } catch (e) { statusEl.textContent = 'Network error: ' + e.message; }
+}
+
+// Upload an image file from disk → crop → save.
+$('upload-btn').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) { const reader = new FileReader(); reader.onload = () => openCropper(reader.result, saveImage); reader.readAsDataURL(file); }
+  e.target.value = '';
+});
+
+function renderStrip() {
+  const strip = $('strip');
+  $('shotcount').textContent = currentFiles.length;
+  $('curitem').classList.toggle('empty', currentFiles.length === 0);
+  $('additem').disabled = currentFiles.length === 0;
+  if (!currentFiles.length) { strip.innerHTML = '<div class="nostrip">No photos yet — press Capture.</div>'; return; }
+  strip.innerHTML = currentFiles.map((f, i) => `
+    <div class="shot">
+      <img src="/captures/${esc(f)}" alt="">
+      <span class="num">${i+1}</span>
+      <button class="x" data-rm="${esc(f)}" title="Remove">×</button>
+    </div>`).join('');
+}
+$('strip').addEventListener('click', e => {
+  const f = e.target.dataset.rm; if (!f) return;
+  currentFiles = currentFiles.filter(x => x !== f); renderStrip();
+});
+
+// qty +/-
+document.querySelectorAll('[data-d]').forEach(b =>
+  b.addEventListener('click', () => { $('qty').value = Math.max(1, (+$('qty').value||1) + (+b.dataset.d)); }));
+
+async function addItem() {
+  if (!currentFiles.length) return;
+  const st = $('itemstatus'); st.textContent = 'Adding…';
+  const ctype = $('ctype').value, cnum = $('cnum').value.trim();
+  const loc = cnum ? `${ctype} ${cnum}` : '';
+  if (loc) localStorage.setItem('lastLocation', loc);
+  try {
+    const r = await fetch('/api/confirm', {
+      method: 'POST', headers: jsonHeaders(),
+      body: JSON.stringify({
+        files: currentFiles,
+        quantity: $('qty').value.trim() === '' ? null : (+$('qty').value || 1),
+        note: $('note').value.trim(),
+        location: loc
+      })
+    });
+    const j = await r.json();
+    if (j.ok) {
+      st.textContent = `✓ Added ${currentFiles.length} photo(s) — identifying…`;
+      currentFiles = []; renderStrip();
+      $('qty').value = ''; $('note').value = '';
+      setTimeout(() => { st.textContent = ''; }, 3000);
+    } else st.textContent = 'Failed: ' + (j.error || 'unknown');
+  } catch (e) { st.textContent = 'Error: ' + e.message; }
+}
+$('additem').addEventListener('click', addItem);
+$('discard').addEventListener('click', () => {
+  if (currentFiles.length && !confirm('Discard the current item\'s photos?')) return;
+  currentFiles = []; renderStrip(); $('itemstatus').textContent = '';
+});
+
+$('snap').addEventListener('click', snap);
+document.addEventListener('keydown', e => {
+  const t = e.target.tagName;
+  if (e.code === 'Space' && t !== 'INPUT' && t !== 'BUTTON' && t !== 'SELECT') { e.preventDefault(); snap(); }
+});
+
+// Pending duplicate decisions (resolved entirely in the browser)
+let invItems = [];
+let lastPendingJSON = '';
+function renderPending(pending) {
+  const box = document.getElementById('pending-decisions');
+  // Don't rebuild while the user is editing a card (would wipe their typing).
+  if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#pending-decisions')) return;
+  const json = JSON.stringify(pending);
+  if (json === lastPendingJSON) return;
+  lastPendingJSON = json;
+  box.innerHTML = (pending || []).map(p => {
+    const c = p.candidate || {};
+    const matchIds = p.matches || (p.match_id ? [p.match_id] : []);
+    const matches = matchIds.map(id => invItems.find(it => it.id === id)).filter(Boolean);
+    const imgs = c.images || [];
+    return `<div class="dup-card" data-pid="${esc(p.pending_id)}">
+      <div class="dup-head">⚠ Possible duplicate — set what it is and which bag</div>
+      <div class="dup-edit">
+        <input class="d-name" value="${esc(c.name || '')}" placeholder="What exactly is in this bag?">
+        <div class="d-row">
+          <label>Qty</label><input type="number" min="0" class="d-qty" value="${c.quantity ?? 1}">
+          <label>Bag</label><input class="d-loc" value="${esc(c.location || '')}" placeholder="e.g. Bag 14">
+        </div>
+      </div>
+      <div class="dup-thumbs">${imgs.map(f => `<img src="/captures/${esc(f)}">`).join('')}</div>
+      ${matches.length ? `<div class="dup-matches"><div class="m-title">Add to a bag that already has this:</div>${matches.map(m => `
+        <div class="m-row">
+          <span class="m-info">📍 ${esc(m.location || '—')} · ×${m.quantity ?? 1} · ${esc(m.name || '')}</span>
+          <button class="go" data-act="add" data-target="${esc(m.id)}" data-bag="${esc(m.location || '')}" data-cur="${m.quantity ?? 1}">＋ Save: add to this bag</button>
+          <button data-act="set" data-target="${esc(m.id)}" data-bag="${esc(m.location || '')}">Set qty</button>
+        </div>`).join('')}</div>` : ''}
+      <div class="dup-btns">
+        <button class="go" data-act="separate">Save as new entry (Bag above)</button>
+        <button class="skip" data-act="dismiss" title="Dismiss — nothing logged or changed">Skip</button>
+      </div>
+      <div class="dup-status"></div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('pending-decisions').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const card = b.closest('.dup-card'); if (!card) return;
+  const candidate = {
+    name: card.querySelector('.d-name').value.trim(),
+    quantity: Number(card.querySelector('.d-qty').value) || 0,
+    location: card.querySelector('.d-loc').value.trim(),
+  };
+  const status = card.querySelector('.dup-status');
+  status.className = 'dup-status'; status.textContent = 'Saving…';
+  card.querySelectorAll('button').forEach(x => x.disabled = true);
+  try {
+    const res = await (await fetch('/api/resolve', { method: 'POST', headers: jsonHeaders(),
+      body: JSON.stringify({ pending_id: card.dataset.pid, action: b.dataset.act, target_id: b.dataset.target, candidate }) })).json();
+    if (res.ok) {
+      status.classList.add('ok');
+      const act = b.dataset.act;
+      if (act === 'add') status.textContent = `✓ Added ${candidate.quantity} — ${b.dataset.bag || 'bag'} now ×${(Number(b.dataset.cur)||0) + candidate.quantity}`;
+      else if (act === 'set') status.textContent = `✓ ${b.dataset.bag || 'Bag'} set to ×${candidate.quantity}`;
+      else if (act === 'separate') status.textContent = `✓ Saved as new entry${candidate.location ? ' in ' + candidate.location : ''}`;
+      else status.textContent = 'Dismissed';
+      lastPendingJSON = '';
+      setTimeout(poll, 900);
+    } else {
+      status.classList.add('err'); status.textContent = 'Failed: ' + (res.error || 'error');
+      card.querySelectorAll('button').forEach(x => x.disabled = false);
+    }
+  } catch (err) {
+    status.classList.add('err'); status.textContent = 'Network error: ' + err.message;
+    card.querySelectorAll('button').forEach(x => x.disabled = false);
+  }
+});
+
+// Live inventory panel
+function renderQueue(queue) {
+  const box = $('queue-strip');
+  if (!queue || !queue.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<span class="qhead"><span class="spin"></span> Identifying ${queue.length} upload${queue.length === 1 ? '' : 's'}…</span>` +
+    queue.map(q => {
+      const img = (q.images || [])[0];
+      const loc = q.location ? esc(q.location) + ' · ' : '';
+      return `<span class="qitem">${img ? `<img src="/captures/${esc(img)}">` : ''}<span class="qstat">${loc}${esc(q.status)}</span></span>`;
+    }).join('');
+}
+async function poll() {
+  try {
+    const items = ((await (await fetch('/api/inventory')).json()).items) || [];
+    invItems = items;
+    try { renderPending(((await (await fetch('/api/pending')).json()).pending) || []); } catch (e) {}
+    try { renderQueue(((await (await fetch('/api/queue')).json()).queue) || []); } catch (e) {}
+    const units = items.reduce((a, it) => a + (Number(it.quantity) || 0), 0);
+    const cats = new Set(items.map(it => it.category).filter(Boolean));
+    $('t-items').textContent = items.length;
+    $('t-units').textContent = units;
+    $('t-cats').textContent = cats.size;
+    $('inv').innerHTML = items.slice().reverse().map(it => {
+      const imgs = it.images || (it.image ? [it.image] : []);
+      return `
+      <div class="item">
+        <div class="thumb">
+          ${imgs.length ? `<img src="/captures/${esc(imgs[0])}">` : `<img>`}
+          ${imgs.length > 1 ? `<span class="badge">${imgs.length}</span>` : ''}
+        </div>
+        <div>
+          <div class="n">${it.name ? esc(it.name) : '⏳ Identifying…'}</div>
+          <div class="c">${esc(it.category || '')}${it.location ? ' · 📍 ' + esc(it.location) : ''}</div>
+        </div>
+        <div class="q">×${it.quantity ?? 1}</div>
+      </div>`;
+    }).join('');
+    $('invempty').style.display = items.length ? 'none' : 'block';
+  } catch (e) {}
+  setTimeout(poll, 1500);
+}
+poll();
+renderStrip();
+start().catch(e => {
+  statusEl.textContent = 'Camera error: ' + e.message + ' — grant camera permission in System Settings › Privacy.';
+});
+</script>
+</body>
+</html>
