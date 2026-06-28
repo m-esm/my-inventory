@@ -3,20 +3,20 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>my-inventory — inventory by photo, not by part number</title>
+<title>my-inventory: inventory by photo, not by part number</title>
 <meta name="description" content="A photo-driven inventory for small parts. Snap a part, set a bag, done. One Python file, standard library only, no build step. Public dashboard, login to edit, optional AI identification." />
 <link rel="canonical" href="https://m-esm.github.io/my-inventory/" />
 
 <!-- Open Graph / Twitter -->
 <meta property="og:type" content="website" />
-<meta property="og:title" content="my-inventory — inventory by photo, not by part number" />
+<meta property="og:title" content="my-inventory: inventory by photo, not by part number" />
 <meta property="og:description" content="Snap a part, set a bag, done. A searchable, shareable catalog of everything in your bins. One Python file, zero dependencies." />
 <meta property="og:url" content="https://m-esm.github.io/my-inventory/" />
 <meta property="og:image" content="https://m-esm.github.io/my-inventory/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="my-inventory — inventory by photo, not by part number" />
+<meta name="twitter:title" content="my-inventory: inventory by photo, not by part number" />
 <meta name="twitter:description" content="Snap a part, set a bag, done. One Python file, zero dependencies, self-hosted." />
 <meta name="twitter:image" content="https://m-esm.github.io/my-inventory/og.png" />
 
@@ -146,7 +146,7 @@
 <header class="hero"><div class="wrap">
   <div class="eyebrow">Open source · Python stdlib only · GPL-3.0</div>
   <h1>Inventory by photo,<br><span class="accent">not by part number.</span></h1>
-  <p class="sub">You never have the SKU. You have the part in your hand. Photograph it, drop it in a bag, and my-inventory turns that into a searchable, shareable catalog of everything in your bins — without a single dependency to install.</p>
+  <p class="sub">You never have the SKU. You have the part in your hand. Photograph it, drop it in a bag, and my-inventory turns that into a searchable, shareable catalog of everything in your bins, without a single dependency to install.</p>
   <div class="cta-row">
     <a class="btn primary" href="https://github.com/m-esm/my-inventory" target="_blank" rel="noopener">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -188,7 +188,7 @@
     <div class="txt">
       <span class="num">1</span>
       <h3>Capture the part</h3>
-      <p>Point any webcam at it — a phone over macOS Continuity Camera works great. Take as many shots as you want for one item (the part, the label, the back of the board). Set a quantity and a bag, hit add.</p>
+      <p>Point any webcam at it. A phone over macOS Continuity Camera works great. Take as many shots as you want for one item (the part, the label, the back of the board). Set a quantity and a bag, hit add.</p>
     </div>
     <div class="shot"><picture><source srcset="screenshots/capture.webp" type="image/webp" /><img src="screenshots/capture.png" alt="Capture page with the live camera, a current-item photo strip, quantity and location fields, and a live inventory list." loading="lazy" width="1600" height="1200" /></picture></div>
   </div>
@@ -206,7 +206,7 @@
     <div class="txt">
       <span class="num">3</span>
       <h3>Search, share, and request what's missing</h3>
-      <p>Filter by category, location or free text, and read the bag/bin map at a glance. Keep a separate "to buy" list for parts you're out of — its create endpoint is public, so an agent can request a component with no credentials.</p>
+      <p>Filter by category, location or free text, and read the bag/bin map at a glance. Keep a separate "to buy" list for parts you're out of. Its create endpoint is public, so an agent can request a component with no credentials.</p>
     </div>
     <div class="shot"><picture><source srcset="screenshots/buy.webp" type="image/webp" /><img src="screenshots/buy.png" alt="The to-buy page listing purchase requests with project, type, reason, quantity and a status dropdown." loading="lazy" width="1600" height="1200" /></picture></div>
   </div>
@@ -218,7 +218,7 @@
   <div class="grid">
     <div class="feat"><div class="ic">📸</div><h3>Photo-first capture</h3><p>Multiple shots per item from any webcam. The photo that shows the part is automatically the card thumbnail; labels go after.</p></div>
     <div class="feat"><div class="ic">🔓</div><h3>View public, edit private</h3><p>Anyone can browse. Editing is gated behind an admin login, persisted in the browser. Manage users from the dashboard.</p></div>
-    <div class="feat"><div class="ic">🧠</div><h3>Optional AI identification</h3><p>Let an LLM agent watch new uploads, read the photo, and write back the name and specs — or skip it and type them.</p></div>
+    <div class="feat"><div class="ic">🧠</div><h3>Optional AI identification</h3><p>Let an LLM agent watch new uploads, read the photo, and write back the name and specs, or skip it and type them.</p></div>
     <div class="feat"><div class="ic">🗃️</div><h3>Duplicate-aware</h3><p>Re-add a part you own and the app surfaces a card to top up, set, or split the stash. No silent double entries.</p></div>
     <div class="feat"><div class="ic">🛒</div><h3>A "to buy" list</h3><p>Track parts to purchase, separate from stock. Marking one bought closes the loop when you file the real part.</p></div>
     <div class="feat"><div class="ic">🤖</div><h3>Agent-friendly (MCP)</h3><p>A stdlib MCP server exposes search, summary, item photos, and one public write so agents can request parts.</p></div>
@@ -230,7 +230,7 @@
   <p class="slead">No dependencies to resolve. Clone it, run it, open the dashboard. Tested on Python 3.9+.</p>
   <div class="code">
     <div class="top">terminal</div>
-    <pre><span class="c"># clone and run — that's it</span>
+    <pre><span class="c"># clone and run, that's it</span>
 git clone https://github.com/m-esm/my-inventory
 cd my-inventory
 <span class="p">python3</span> server.py            <span class="c"># http://localhost:8770/dashboard</span>
@@ -253,7 +253,7 @@ cd my-inventory
 </div></section>
 
 <footer><div class="wrap">
-  <div>my-inventory — photo-driven parts inventory.</div>
+  <div>my-inventory: photo-driven parts inventory.</div>
   <div>
     <a href="https://github.com/m-esm/my-inventory" target="_blank" rel="noopener">GitHub</a> ·
     <a href="https://github.com/m-esm/my-inventory/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a> ·

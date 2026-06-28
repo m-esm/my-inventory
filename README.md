@@ -138,9 +138,9 @@ Tools: `search_inventory`, `inventory_summary`, `list_all_items`, `get_item_imag
 
 ## Data and backups
 
-- `data/inventory.json` — the items (tracked here as the example).
-- `captures/*.png` — item photos (the example photos are included).
-- `data/users.json`, `data/*.bak`, `data/pending.json`, `data/wishlist.json` — local
+- `data/inventory.json`: the items (tracked here as the example).
+- `captures/*.png`: item photos (the example photos are included).
+- `data/users.json`, `data/*.bak`, `data/pending.json`, `data/wishlist.json`: local
   / secret state, gitignored.
 - `scripts/backup.sh` pulls `data/` + `captures/` from a running server to a local
   folder (timestamped, zipped, read-only, pruned). Schedule it with cron or launchd.

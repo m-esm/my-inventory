@@ -4,7 +4,7 @@ A photo-driven inventory of small parts (electronics components, hardware, craft
 supplies, anything you keep in labelled bags/bins), with a live web dashboard you
 can share read-only and edit after logging in. Items are captured as photos,
 optionally identified by an LLM agent from the photo, and tracked in a JSON file
-rendered on a dashboard. Python standard library only — no Node, no pip, no DB.
+rendered on a dashboard. Python standard library only. No Node, no pip, no DB.
 
 > **Keep this file updated.** Whenever the architecture, data model, workflow, or
 > conventions below change, update CLAUDE.md in the same change. It is the source
@@ -48,8 +48,8 @@ public/
   dashboard.html     # editable dashboard (edit modal w/ inline camera, lightbox gallery)
   wishlist.html      # the "To buy" page
 data/
-  inventory.json     # the inventory — { "items": [ ... ] }
-  wishlist.json      # purchase requests ("to buy") — { "wishlist": [ ... ] }  (gitignored)
+  inventory.json     # the inventory: { "items": [ ... ] }
+  wishlist.json      # purchase requests ("to buy"): { "wishlist": [ ... ] }  (gitignored)
 captures/
   cap-<ms>.png       # raw captured frames (the photo for each item)
   cap-<ms>.json      # one sidecar per item on confirmation: {files:[...], quantity, note, location}
@@ -91,7 +91,7 @@ item + `review-*.json` there. `deploy/vps-bridge.sh` (run on the camera machine)
 polls the remote via `deploy/find_unprocessed.py`, pulls the new **photos only**,
 and lets a local agent identify them and write back. `deploy/sync.sh` does a
 two-way merge (unions inventory/pending by `id`, copies photos both ways). All of
-these read `VPS_HOST` / `VPS_USER` / `VPS_PATH` from the environment — nothing is
+these read `VPS_HOST` / `VPS_USER` / `VPS_PATH` from the environment. Nothing is
 hardcoded.
 
 ## API (all POST take/return JSON)
@@ -116,8 +116,8 @@ hardcoded.
 | `POST /api/wishlist/resolve` | **Admin**: manage a request (status/edit/delete).   |
 | `GET /captures/<f>`  | Serves a captured image.                                    |
 
-`/api/ingest` (admin auth) is the safe way for an agent to write identified items —
-prefer it over editing `inventory.json` directly, which races with the server.
+`/api/ingest` (admin auth) is the safe way for an agent to write identified items.
+Prefer it over editing `inventory.json` directly, which races with the server.
 
 ## Data model (`inventory.json` item)
 
@@ -138,7 +138,7 @@ prefer it over editing `inventory.json` directly, which races with the server.
 
 When an item is identified, check whether it already exists (match by normalized
 name / SKU). If it does, do NOT silently create a second entry and do NOT ask in
-chat — **post a pending decision** so the user resolves it in the browser:
+chat. **Post a pending decision** so the user resolves it in the browser:
 
 ```
 POST /api/pending { matches:[<every similar item id>], candidate:{ name, category,
@@ -190,7 +190,7 @@ isn't in stock.
 - **Both the agent and the dashboard write `inventory.json`.** Re-read before editing
   directly (it may have changed via the UI), or go through the API.
 
-## Authentication — public viewing, log in to edit
+## Authentication: public viewing, log in to edit
 
 **Viewing is public:** all GET endpoints are open. **Editing requires admin login:**
 every POST is gated to `admin`. The dashboard has a Log in / Log out button; once
@@ -209,7 +209,7 @@ python3 server.py users                     # list users / show auth state
 python3 server.py deluser <name>
 ```
 
-Passwords are stored salted-SHA256 in `data/users.json` (gitignored — never
+Passwords are stored salted-SHA256 in `data/users.json` (gitignored, never
 synced/committed). Basic Auth is base64 (not encryption), so use HTTPS for real use
 (see `deploy/Caddyfile`).
 
@@ -223,12 +223,12 @@ synced/committed). Basic Auth is base64 (not encryption), so use HTTPS for real 
 The app is a single stdlib server, so deployment is just "run `server.py` behind a
 TLS-terminating proxy." `deploy/` has two ready paths:
 
-- **Docker + reverse proxy** — `Dockerfile` + `docker-compose.yml` (the compose file
+- **Docker + reverse proxy**: `Dockerfile` + `docker-compose.yml` (the compose file
   carries Traefik v1 labels; edit `inventory.example.com` to your domain).
   `deploy/docker-entrypoint.sh` seeds the admin account from `ADMIN_USER` /
   `ADMIN_PASS` (put them in `deploy/admin.env`; copy from `deploy/admin.env.example`,
   gitignored).
-- **systemd + Caddy** — `deploy/inventory.service` (binds `127.0.0.1:8770`, hardened
+- **systemd + Caddy**: `deploy/inventory.service` (binds `127.0.0.1:8770`, hardened
   writes) + `deploy/Caddyfile` (auto-HTTPS via Let's Encrypt). `deploy/deploy.sh`
   rsyncs code + data and restarts the service.
 
