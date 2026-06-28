@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>my-inventory — inventory by photo, not by part number</title>
+<meta name="description" content="A photo-driven inventory for small parts. Snap a part, set a bag, done. One Python file, standard library only, no build step. Public dashboard, login to edit, optional AI identification." />
+<link rel="canonical" href="https://m-esm.github.io/my-inventory/" />
+
+<!-- Open Graph / Twitter -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="my-inventory — inventory by photo, not by part number" />
+<meta property="og:description" content="Snap a part, set a bag, done. A searchable, shareable catalog of everything in your bins. One Python file, zero dependencies." />
+<meta property="og:url" content="https://m-esm.github.io/my-inventory/" />
+<meta property="og:image" content="https://m-esm.github.io/my-inventory/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="my-inventory — inventory by photo, not by part number" />
+<meta name="twitter:description" content="Snap a part, set a bag, done. One Python file, zero dependencies, self-hosted." />
+<meta name="twitter:image" content="https://m-esm.github.io/my-inventory/og.png" />
+
+<style>
+  :root {
+    --bg:#0a0e13; --panel:#11161d; --panel2:#161b22; --line:#1f2730; --line2:#2a3340;
+    --text:#e6edf3; --dim:#768390; --dim2:#9aa7b4;
+    --blue:#2f81f7; --bluefg:#79c0ff; --green:#238636; --green2:#2ea043; --live:#3fb950;
+    --amber:#e3b341;
+  }
+  * { box-sizing:border-box; }
+  picture { display:contents; }
+  html { scroll-behavior:smooth; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font:16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(900px 500px at 15% -8%, #2386361f, transparent 60%),
+      radial-gradient(900px 600px at 100% 0%, #2f81f71a, transparent 55%);
+    background-repeat:no-repeat;
+  }
+  a { color:var(--bluefg); text-decoration:none; }
+  .wrap { max-width:1080px; margin:0 auto; padding:0 24px; }
+  .eyebrow { font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim2); font-weight:600; }
+  .accent { background:linear-gradient(90deg,#e6edf3,#79c0ff); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .btn { display:inline-flex; align-items:center; gap:8px; border-radius:10px; padding:12px 20px;
+         font-weight:600; font-size:15px; border:1px solid var(--line2); background:var(--panel2); color:var(--text); transition:.15s; }
+  .btn:hover { border-color:#3a4654; transform:translateY(-1px); }
+  .btn.primary { background:var(--green); border-color:var(--green2); color:#fff; }
+  .btn.primary:hover { background:var(--green2); }
+  .btn svg { width:18px; height:18px; }
+
+  /* nav */
+  nav { position:sticky; top:0; z-index:20; backdrop-filter:blur(10px); background:#0a0e13d9; border-bottom:1px solid var(--line); }
+  nav .wrap { display:flex; align-items:center; justify-content:space-between; height:60px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; color:var(--text); }
+  .brand .puck { width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #d7dee6, #38404b); box-shadow:0 0 0 1px #ffffff14; }
+  .nav-links { display:flex; align-items:center; gap:22px; font-size:14px; color:var(--dim2); }
+  .nav-links a { color:var(--dim2); }
+  .nav-links a:hover { color:var(--text); }
+  @media (max-width:680px){ .nav-links a:not(.btn){ display:none; } }
+
+  /* hero */
+  .hero { padding:76px 0 40px; text-align:center; }
+  .hero h1 { font-size:clamp(38px,6vw,66px); line-height:1.04; margin:18px 0 0; letter-spacing:-.02em; font-weight:800; }
+  .hero p.sub { font-size:clamp(17px,2.2vw,21px); color:var(--dim2); max-width:680px; margin:22px auto 0; }
+  .cta-row { margin-top:30px; display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+  .pills { margin-top:26px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .pill { font-size:13px; color:var(--dim2); border:1px solid var(--line2); background:var(--panel); border-radius:999px; padding:6px 13px; }
+  .pill b { color:var(--live); font-weight:700; }
+
+  /* browser frame */
+  .frame { margin:48px auto 0; max-width:1000px; border:1px solid var(--line2); border-radius:14px; overflow:hidden;
+           background:var(--panel); box-shadow:0 40px 90px -40px #000, 0 0 0 1px #ffffff08; }
+  .frame .bar { display:flex; align-items:center; gap:8px; padding:11px 14px; background:var(--panel2); border-bottom:1px solid var(--line); }
+  .frame .bar i { width:11px; height:11px; border-radius:50%; background:#39424e; display:inline-block; }
+  .frame .bar .url { margin-left:12px; font-size:12px; color:var(--dim); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:3px 12px; flex:1; max-width:340px; }
+  .frame img { display:block; width:100%; }
+
+  /* sections */
+  section { padding:72px 0; border-top:1px solid var(--line); }
+  .stitle { font-size:clamp(26px,3.4vw,38px); font-weight:800; letter-spacing:-.02em; margin:0; text-align:center; }
+  .slead { text-align:center; color:var(--dim2); max-width:640px; margin:14px auto 0; font-size:17px; }
+
+  /* why cards */
+  .why { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:46px; }
+  .why .c { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:24px; }
+  .why .c h3 { margin:6px 0 8px; font-size:18px; }
+  .why .c p { margin:0; color:var(--dim2); font-size:15px; }
+  .why .c .ic { font-size:24px; }
+  @media (max-width:760px){ .why { grid-template-columns:1fr; } }
+
+  /* steps */
+  .step { display:grid; grid-template-columns:1fr 1fr; gap:44px; align-items:center; margin-top:54px; }
+  .step:first-of-type { margin-top:46px; }
+  .step.rev .txt { order:2; }
+  .step .num { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:9px;
+               background:var(--bluefg)14; color:var(--bluefg); border:1px solid #2f81f755; font-weight:700; font-size:15px; }
+  .step h3 { font-size:23px; margin:16px 0 8px; letter-spacing:-.01em; }
+  .step p { color:var(--dim2); margin:0; }
+  .step .shot { border:1px solid var(--line2); border-radius:12px; overflow:hidden; background:var(--panel); box-shadow:0 24px 60px -36px #000; }
+  .step .shot img { display:block; width:100%; }
+  @media (max-width:760px){ .step { grid-template-columns:1fr; gap:20px; } .step.rev .txt { order:0; } }
+
+  /* features */
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:46px; }
+  .feat { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; transition:.15s; }
+  .feat:hover { border-color:#324155; transform:translateY(-2px); }
+  .feat .ic { font-size:22px; }
+  .feat h3 { margin:10px 0 6px; font-size:16.5px; }
+  .feat p { margin:0; color:var(--dim2); font-size:14.5px; }
+  @media (max-width:760px){ .grid { grid-template-columns:1fr; } }
+
+  /* code */
+  .code { max-width:720px; margin:40px auto 0; background:#06090d; border:1px solid var(--line2); border-radius:12px; overflow:hidden; }
+  .code .top { padding:9px 14px; border-bottom:1px solid var(--line); color:var(--dim); font-size:12px; background:var(--panel2); }
+  .code pre { margin:0; padding:20px; overflow-x:auto; font:14px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .code .p { color:var(--live); } .code .c { color:var(--dim); } .code .k { color:var(--bluefg); }
+
+  /* final cta */
+  .final { text-align:center; background:
+      radial-gradient(700px 300px at 50% 0%, #23863622, transparent 70%); }
+  .final h2 { font-size:clamp(28px,4vw,44px); font-weight:800; letter-spacing:-.02em; margin:0; }
+  .final p { color:var(--dim2); font-size:18px; margin:16px auto 30px; max-width:560px; }
+  .clone { display:inline-block; margin-top:24px; font:13.5px ui-monospace, Menlo, monospace; color:var(--dim2);
+           background:#06090d; border:1px solid var(--line2); border-radius:9px; padding:10px 16px; }
+  .clone .p { color:var(--live); }
+
+  footer { border-top:1px solid var(--line); padding:34px 0 50px; color:var(--dim); font-size:14px; }
+  footer .wrap { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; }
+  footer a { color:var(--dim2); }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <div class="brand"><span class="puck"></span> my-inventory</div>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#start">Get started</a>
+    <a class="btn" href="https://github.com/m-esm/my-inventory" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">Open source · Python stdlib only · GPL-3.0</div>
+  <h1>Inventory by photo,<br><span class="accent">not by part number.</span></h1>
+  <p class="sub">You never have the SKU. You have the part in your hand. Photograph it, drop it in a bag, and my-inventory turns that into a searchable, shareable catalog of everything in your bins — without a single dependency to install.</p>
+  <div class="cta-row">
+    <a class="btn primary" href="https://github.com/m-esm/my-inventory" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+    <a class="btn" href="#how">See how it works</a>
+  </div>
+  <div class="pills">
+    <span class="pill"><b>0</b> dependencies</span>
+    <span class="pill"><b>1</b> Python file to deploy</span>
+    <span class="pill">No build step</span>
+    <span class="pill">Ships a <b>~60-item</b> live example</span>
+  </div>
+
+  <div class="frame">
+    <div class="bar"><i></i><i></i><i></i><span class="url">localhost:8770/dashboard</span></div>
+    <picture>
+      <source srcset="screenshots/dashboard.webp" type="image/webp" />
+      <img src="screenshots/dashboard.png" alt="The my-inventory dashboard: a grid of electronics parts with photos, quantities, bag locations and category tags." loading="eager" width="1600" height="1345" />
+    </picture>
+  </div>
+</div></header>
+
+<section id="why"><div class="wrap">
+  <h2 class="stitle">Built around the photo, not the spreadsheet</h2>
+  <p class="slead">Most inventory tools ask for a part number you don't have. This one starts from the one honest record of what's in a bag: a picture of it.</p>
+  <div class="why">
+    <div class="c"><div class="ic">📷</div><h3>A photo beats a part number</h3><p>A macro shot identifies a component faster than digging for a SKU that rubbed off the bag months ago. The image is the source of truth; names and specs are optional metadata.</p></div>
+    <div class="c"><div class="ic">🔗</div><h3>Public to view, locked to edit</h3><p>Send a collaborator a read-only link to the whole catalog. Edit controls appear only after you log in. Auth stays off until you create the first admin.</p></div>
+    <div class="c"><div class="ic">🪶</div><h3>Runs on anything</h3><p><code>python3 server.py</code> and it's live. No Node, no pip, no database, no build pipeline. The same single file runs on your laptop or a $5 VPS.</p></div>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <h2 class="stitle">Three steps, no typing part numbers</h2>
+  <p class="slead">From a part in your hand to a searchable entry your collaborator can see.</p>
+
+  <div class="step">
+    <div class="txt">
+      <span class="num">1</span>
+      <h3>Capture the part</h3>
+      <p>Point any webcam at it — a phone over macOS Continuity Camera works great. Take as many shots as you want for one item (the part, the label, the back of the board). Set a quantity and a bag, hit add.</p>
+    </div>
+    <div class="shot"><picture><source srcset="screenshots/capture.webp" type="image/webp" /><img src="screenshots/capture.png" alt="Capture page with the live camera, a current-item photo strip, quantity and location fields, and a live inventory list." loading="lazy" width="1600" height="1200" /></picture></div>
+  </div>
+
+  <div class="step rev">
+    <div class="txt">
+      <span class="num">2</span>
+      <h3>It gets logged and organized</h3>
+      <p>The item lands on the dashboard with its photo as the thumbnail. Type the name yourself, or let an LLM read the photo and fill in name, category, condition and specs. Add the same part twice and it asks whether to top up the bag or file a new one.</p>
+    </div>
+    <div class="shot"><picture><source srcset="screenshots/dashboard.webp" type="image/webp" /><img src="screenshots/dashboard.png" alt="Dashboard grid of identified parts with category and location tags and per-card quantity controls." loading="lazy" width="1600" height="1345" /></picture></div>
+  </div>
+
+  <div class="step">
+    <div class="txt">
+      <span class="num">3</span>
+      <h3>Search, share, and request what's missing</h3>
+      <p>Filter by category, location or free text, and read the bag/bin map at a glance. Keep a separate "to buy" list for parts you're out of — its create endpoint is public, so an agent can request a component with no credentials.</p>
+    </div>
+    <div class="shot"><picture><source srcset="screenshots/buy.webp" type="image/webp" /><img src="screenshots/buy.png" alt="The to-buy page listing purchase requests with project, type, reason, quantity and a status dropdown." loading="lazy" width="1600" height="1200" /></picture></div>
+  </div>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <h2 class="stitle">Everything in one small file</h2>
+  <p class="slead">No framework, no service mesh. Just the features you actually use to keep parts findable.</p>
+  <div class="grid">
+    <div class="feat"><div class="ic">📸</div><h3>Photo-first capture</h3><p>Multiple shots per item from any webcam. The photo that shows the part is automatically the card thumbnail; labels go after.</p></div>
+    <div class="feat"><div class="ic">🔓</div><h3>View public, edit private</h3><p>Anyone can browse. Editing is gated behind an admin login, persisted in the browser. Manage users from the dashboard.</p></div>
+    <div class="feat"><div class="ic">🧠</div><h3>Optional AI identification</h3><p>Let an LLM agent watch new uploads, read the photo, and write back the name and specs — or skip it and type them.</p></div>
+    <div class="feat"><div class="ic">🗃️</div><h3>Duplicate-aware</h3><p>Re-add a part you own and the app surfaces a card to top up, set, or split the stash. No silent double entries.</p></div>
+    <div class="feat"><div class="ic">🛒</div><h3>A "to buy" list</h3><p>Track parts to purchase, separate from stock. Marking one bought closes the loop when you file the real part.</p></div>
+    <div class="feat"><div class="ic">🤖</div><h3>Agent-friendly (MCP)</h3><p>A stdlib MCP server exposes search, summary, item photos, and one public write so agents can request parts.</p></div>
+  </div>
+</div></section>
+
+<section id="start"><div class="wrap">
+  <h2 class="stitle">The whole install</h2>
+  <p class="slead">No dependencies to resolve. Clone it, run it, open the dashboard. Tested on Python 3.9+.</p>
+  <div class="code">
+    <div class="top">terminal</div>
+    <pre><span class="c"># clone and run — that's it</span>
+git clone https://github.com/m-esm/my-inventory
+cd my-inventory
+<span class="p">python3</span> server.py            <span class="c"># http://localhost:8770/dashboard</span>
+
+<span class="c"># share it: same file behind Docker or Caddy (auto-HTTPS)</span>
+<span class="p">docker</span> compose up -d --build</pre>
+  </div>
+</div></section>
+
+<section class="final"><div class="wrap">
+  <h2>Stop guessing what's in the bag.</h2>
+  <p>A photo-driven parts inventory you can stand up in under a minute and actually keep using.</p>
+  <div class="cta-row">
+    <a class="btn primary" href="https://github.com/m-esm/my-inventory" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      Get it on GitHub
+    </a>
+  </div>
+  <div class="clone"><span class="p">git</span> clone https://github.com/m-esm/my-inventory</div>
+</div></section>
+
+<footer><div class="wrap">
+  <div>my-inventory — photo-driven parts inventory.</div>
+  <div>
+    <a href="https://github.com/m-esm/my-inventory" target="_blank" rel="noopener">GitHub</a> ·
+    <a href="https://github.com/m-esm/my-inventory/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a> ·
+    Built with Python stdlib
+  </div>
+</div></footer>
+
+</body>
+</html>
