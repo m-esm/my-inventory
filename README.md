@@ -1,5 +1,7 @@
 # my-inventory
 
+**Landing page: [m-esm.github.io/my-inventory](https://m-esm.github.io/my-inventory/)**
+
 A photo-driven inventory for small parts: electronics components, hardware,
 fasteners, craft supplies, anything you keep in labelled bags or bins. Snap a
 photo, set a quantity and a location, and it shows up on a live web dashboard you
