@@ -96,6 +96,15 @@
     .flow .arrow { transform:rotate(90deg); }
   }
 
+  /* architecture diagram */
+  .diagram { margin-top:46px; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px 26px 22px; }
+  .diagram svg { width:100%; height:auto; display:block; }
+  .legend { display:flex; gap:16px; margin-top:20px; padding-top:20px; border-top:1px solid var(--line); flex-wrap:wrap; }
+  .legend .lg { flex:1 1 230px; display:flex; gap:10px; align-items:flex-start; color:var(--dim2); font-size:14px; }
+  .legend .lg .n { flex:none; width:22px; height:22px; border-radius:50%; background:#2ea0431f; color:var(--live);
+                   border:1px solid #2ea04355; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .legend .lg b { color:var(--text); font-weight:600; }
+
   /* steps */
   .step { display:grid; grid-template-columns:1fr 1fr; gap:44px; align-items:center; margin-top:54px; }
   .step:first-of-type { margin-top:46px; }
@@ -204,6 +213,77 @@
   </div>
 </div></section>
 
+<section id="setup"><div class="wrap">
+  <h2 class="stitle">Hosted on your VPS. Scanned from your pocket.</h2>
+  <p class="slead">Run the dashboard on your own server so it's always on and shared at one URL. Scan from any browser, and a Claude watcher on your machine does the identifying in the background.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 940 470" role="img" aria-label="Architecture: your phone or laptop scans a part into the VPS-hosted dashboard; a Claude watcher on your machine pulls the upload, identifies the part, and writes the result back; you and collaborators view the live catalog.">
+      <defs>
+        <marker id="ah" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#768390"/>
+        </marker>
+        <marker id="ahg" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="#2ea043"/>
+        </marker>
+      </defs>
+
+      <!-- section labels -->
+      <text x="121" y="40" text-anchor="middle" fill="#768390" font-size="12" font-weight="700" letter-spacing="1.5">YOUR DEVICES</text>
+      <text x="838" y="128" text-anchor="middle" fill="#768390" font-size="12" font-weight="700" letter-spacing="1.5">ANYONE</text>
+
+      <!-- arrows -->
+      <line x1="208" y1="116" x2="368" y2="156" stroke="#768390" stroke-width="2" marker-end="url(#ah)"/>
+      <line x1="208" y1="348" x2="368" y2="222" stroke="#768390" stroke-width="2" marker-end="url(#ah)"/>
+      <text x="292" y="150" text-anchor="middle" fill="#9aa7b4" font-size="13">scan &amp; upload</text>
+
+      <line x1="476" y1="274" x2="476" y2="336" stroke="#768390" stroke-width="2" marker-end="url(#ah)"/>
+      <line x1="514" y1="336" x2="514" y2="274" stroke="#2ea043" stroke-width="2" marker-end="url(#ahg)"/>
+      <text x="455" y="312" text-anchor="end" fill="#9aa7b4" font-size="12">photo</text>
+      <text x="535" y="312" text-anchor="start" fill="#3fb950" font-size="12">identified</text>
+
+      <line x1="618" y1="184" x2="756" y2="206" stroke="#768390" stroke-width="2" marker-end="url(#ah)"/>
+      <text x="688" y="178" text-anchor="middle" fill="#9aa7b4" font-size="13">live &amp; shareable</text>
+
+      <!-- phone -->
+      <rect x="36" y="60" width="170" height="100" rx="16" fill="#161b22" stroke="#2a3340"/>
+      <text x="121" y="104" text-anchor="middle" font-size="30">📱</text>
+      <text x="121" y="138" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="600">Phone camera</text>
+
+      <!-- laptop -->
+      <rect x="36" y="302" width="170" height="100" rx="16" fill="#161b22" stroke="#2a3340"/>
+      <text x="121" y="346" text-anchor="middle" font-size="28">💻</text>
+      <text x="121" y="380" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="600">Laptop camera</text>
+
+      <!-- VPS -->
+      <rect x="372" y="96" width="244" height="176" rx="18" fill="#11201a" stroke="#2ea043" stroke-width="1.5"/>
+      <text x="494" y="146" text-anchor="middle" font-size="26">☁️</text>
+      <text x="494" y="184" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="700">Your VPS</text>
+      <text x="494" y="210" text-anchor="middle" fill="#9aa7b4" font-size="14">my-inventory · live dashboard</text>
+      <text x="494" y="240" text-anchor="middle" fill="#3fb950" font-size="13" font-weight="600">● always on · one URL</text>
+
+      <!-- watcher -->
+      <rect x="338" y="336" width="316" height="104" rx="16" fill="#0f1722" stroke="#2f81f7" stroke-width="1.5"/>
+      <text x="496" y="372" text-anchor="middle" fill="#e6edf3" font-size="17" font-weight="700">🧠 Claude watcher</text>
+      <text x="496" y="396" text-anchor="middle" fill="#9aa7b4" font-size="14">runs on your laptop / desktop</text>
+      <text x="496" y="420" text-anchor="middle" fill="#768390" font-size="13">polls the VPS · identifies · writes back</text>
+
+      <!-- collaborators -->
+      <rect x="760" y="146" width="156" height="156" rx="16" fill="#161b22" stroke="#2a3340"/>
+      <text x="838" y="196" text-anchor="middle" font-size="28">👥</text>
+      <text x="838" y="232" text-anchor="middle" fill="#e6edf3" font-size="15" font-weight="600">You &amp; collaborators</text>
+      <text x="838" y="256" text-anchor="middle" fill="#9aa7b4" font-size="13">view anywhere,</text>
+      <text x="838" y="274" text-anchor="middle" fill="#9aa7b4" font-size="13">read-only</text>
+    </svg>
+
+    <div class="legend">
+      <div class="lg"><span class="n">1</span><span><b>Scan</b> on your phone or laptop. The photo uploads to the dashboard on your VPS.</span></div>
+      <div class="lg"><span class="n">2</span><span>A <b>Claude watcher</b> on your machine spots the new upload, pulls the photo, and identifies the part.</span></div>
+      <div class="lg"><span class="n">3</span><span>It <b>writes the result back</b> to the VPS, so you and anyone you share the link with see the live catalog.</span></div>
+    </div>
+  </div>
+</div></section>
+
 <section id="how"><div class="wrap">
   <h2 class="stitle">From a part in your hand to a catalog entry</h2>
   <p class="slead">Three steps, and the only thing you type is the bag it goes in.</p>
@@ -212,7 +292,7 @@
     <div class="txt">
       <span class="num">Step 1 · Scan</span>
       <h3>Hold the part up to your phone</h3>
-      <p>Open the capture page and point any camera at the component. A phone over macOS Continuity Camera works great. Snap the part, the label, the back of the board: as many shots as you want for one item.</p>
+      <p>Open your inventory's live site (it runs on your own VPS, always on) on your phone or laptop and point the camera at the component. A phone over macOS Continuity Camera works great. Snap the part, the label, the back of the board: as many shots as you want for one item.</p>
     </div>
     <div class="shot"><picture><source srcset="screenshots/capture.webp" type="image/webp" /><img src="screenshots/capture.png" alt="The capture page with a live camera view, a photo strip for the current item, and the running inventory beside it." loading="lazy" width="1600" height="1200" /></picture></div>
   </div>
@@ -221,7 +301,7 @@
     <div class="txt">
       <span class="num">Step 2 · Claude identifies</span>
       <h3>Claude reads the photo and names it</h3>
-      <p>This is the part you don't do. Claude looks at your shots and writes back the name, category, condition and the specs and SKU printed on the label. It catches duplicates, orders the part photo first, and flags anything it isn't sure about so you can confirm it.</p>
+      <p>This is the part you don't do. A Claude watcher on your machine spots the new upload on the VPS, reads your shots, and writes back the name, category, condition and the specs and SKU printed on the label. It catches duplicates, orders the part photo first, and flags anything it isn't sure about so you can confirm it.</p>
     </div>
     <div class="shot"><picture><source srcset="screenshots/dashboard.webp" type="image/webp" /><img src="screenshots/dashboard.png" alt="Identified parts on the dashboard, each with a Claude-written name, category tag, bag location and notes." loading="lazy" width="1600" height="1345" /></picture></div>
   </div>
